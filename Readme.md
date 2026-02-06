@@ -1,0 +1,108 @@
+# WooCommerce MCP Server
+
+An MCP (Model Context Protocol) server for WooCommerce, providing tools for product management, order analysis, sales trends, and integration with the Nova B2B theme.
+
+## Features
+
+### Core WooCommerce Tools
+- **Get Products**: Retrieve product lists with details (ID, name, SKU, price, stock).
+- **Get Orders**: Fetch recent orders with status and totals.
+- **Analyze Sales Trends**: Get revenue analysis and daily averages over a time period.
+- **Low Stock Alerts**: Identify products that need reordering.
+- **Order Management**: Update status, add notes, and create refunds.
+- **Marketing**: Create and manage coupons.
+
+### Nova B2B Integration Tools
+- **Live Order Feed**: Track physical material details and production queue.
+- **Signage Calculator Pricing**: Retrieve pricing tables for letters, logos, and quantity discounts.
+- **Production Timeline**: Detailed milestones and estimated lead times.
+- **Design Approvals**: Access shared links to mockups and submit approval status.
+- **Product Knowledge**: Access technical specs, installation guides, and FAQs.
+- **Customer Lookup**: Find business information by email or user ID.
+- **Zendesk Support**: Link tickets to orders and view customer history.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- WooCommerce store with REST API access
+- Nova B2B Theme (optional, for custom tools)
+
+## Setup Instructions
+
+### 1. Create Virtual Environment
+
+Start by creating and activating a Python virtual environment:
+
+```powershell
+# Create venv
+python -m venv venv
+
+# Activate venv (Windows)
+.\venv\Scripts\activate
+```
+
+### 2. Install Dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env` file in the root directory (or edit the existing one). The Nova tools require additional authentication for sensitive data.
+
+```ini
+# WooCommerce API (Standard)
+WC_URL=https://your-store.com/
+WC_CONSUMER_KEY=ck_your_consumer_key
+WC_CONSUMER_SECRET=cs_your_consumer_secret
+
+# Nova B2B Configuration (Custom Tools)
+NOVA_API_KEY=your_custom_api_key
+WP_USERNAME=admin_username
+WP_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
+```
+
+### 4. Test Connection
+
+Verify your setup by running the connection test script:
+
+```powershell
+python test_connection.py
+```
+
+## Usage
+
+### Running the Server
+
+To run the MCP server using stdio:
+
+```powershell
+python server.py
+```
+
+### Connecting to Claude Desktop
+
+Add the following to your Claude Desktop configuration (usually `%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "woocommerce": {
+      "command": "python.exe",
+      "args": [
+        "f:\\Work\\Nova\\wc-mcp-server\\server.py"
+      ],
+      "env": {
+        "WC_URL": "your_url",
+        "WC_CONSUMER_KEY": "your_key",
+        "WC_CONSUMER_SECRET": "your_secret",
+        "NOVA_API_KEY": "your_api_key",
+        "WP_USERNAME": "your_username",
+        "WP_APP_PASSWORD": "your_app_password"
+      }
+    }
+  }
+}
+```
+*Note: Make sure to use the absolute path to your python executable if it's not in your PATH.*
