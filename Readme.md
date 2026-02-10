@@ -12,6 +12,12 @@ An MCP (Model Context Protocol) server for WooCommerce, providing tools for prod
 - **Order Management**: Update status, add notes, and create refunds.
 - **Marketing**: Create and manage coupons.
 
+### Support & CRM Integration
+- **Zendesk Tickets**: Search for support tickets, get details, and retrieve comment history.
+- **Support Responses**: Add public replies or internal notes directly to tickets.
+- **User Management**: Search and identify customers within the Zendesk system.
+- **Streak CRM**: Retrieve box details for deal tracking.
+
 ### Nova B2B Integration Tools
 - **Live Order Feed**: Track physical material details and production queue.
 - **Signage Calculator Pricing**: Retrieve pricing tables for letters, logos, and quantity discounts.
@@ -19,7 +25,7 @@ An MCP (Model Context Protocol) server for WooCommerce, providing tools for prod
 - **Design Approvals**: Access shared links to mockups and submit approval status.
 - **Product Knowledge**: Access technical specs, installation guides, and FAQs.
 - **Customer Lookup**: Find business information by email or user ID.
-- **Zendesk Support**: Link tickets to orders and view customer history.
+- **OCR Integration**: Extract contact details from business card images.
 
 ## Prerequisites
 
@@ -61,6 +67,10 @@ WC_CONSUMER_SECRET=cs_your_consumer_secret
 NOVA_API_KEY=your_custom_api_key
 WP_USERNAME=admin_username
 WP_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
+
+# Zendesk Integration (Direct)
+ZENDESK_EMAIL=your_email@example.com
+ZENDESK_API_TOKEN=your_zendesk_api_token
 ```
 
 ### 4. Test Connection
@@ -99,7 +109,9 @@ Add the following to your Claude Desktop configuration (usually `%APPDATA%\Claud
         "WC_CONSUMER_SECRET": "your_secret",
         "NOVA_API_KEY": "your_api_key",
         "WP_USERNAME": "your_username",
-        "WP_APP_PASSWORD": "your_app_password"
+        "WP_APP_PASSWORD": "your_app_password",
+        "ZENDESK_EMAIL": "your_email",
+        "ZENDESK_API_TOKEN": "your_token"
       }
     }
   }

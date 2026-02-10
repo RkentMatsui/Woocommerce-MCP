@@ -12,9 +12,23 @@ from mcp.types import Tool, TextContent
 from woocommerce import API
 from dotenv import load_dotenv
 import pandas as pd
+from zendesk_tools import handle_zendesk_tool, get_zendesk_tool_definitions
 
-# Load environment variables
-load_dotenv()
+# Manual .env parsing
+def load_env_manually(path):
+    if not os.path.exists(path):
+        return
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key.strip()] = value.strip()
+
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_env_manually(env_path)
 
 # Initialize WooCommerce API client
 wcapi = API(
@@ -126,6 +140,10 @@ def wp_get(endpoint: str, params: dict = None) -> dict:
 async def call_tool(name: str, arguments: Any) -> list[TextContent]:
     """Handle tool calls from Claude"""
     
+    # Handle Zendesk tools
+    if name.startswith("search_zendesk") or name.startswith("get_zendesk") or name == "add_zendesk_ticket_comment":
+        return await handle_zendesk_tool(name, arguments)
+
     if name == "get_products":
         per_page = arguments.get("per_page", 10)
         category = arguments.get("category", None)
@@ -198,23 +216,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             text=json.dumps(result, indent=2)
         )]
 
-    elif name == "update_order_status":
-        order_id = arguments.get("order_id")
-        status = arguments.get("status")
-        
-        if not order_id or not status:
-            return [TextContent(type="text", text="Error: order_id and status are required")]
-            
-        result = wc_request("put", f"orders/{order_id}", data={"status": status})
-        
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-            
-        return [TextContent(
-            type="text",
-            text=f"Successfully updated order {order_id} status to {status}."
-        )]
-
     elif name == "get_order_notes":
         order_id = arguments.get("order_id")
         
@@ -239,49 +240,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             text=json.dumps(result, indent=2)
         )]
 
-    elif name == "add_order_note":
-        order_id = arguments.get("order_id")
-        note = arguments.get("note")
-        customer_note = arguments.get("customer_note", False)
-        
-        if not order_id or not note:
-            return [TextContent(type="text", text="Error: order_id and note are required")]
-            
-        result = wc_request("post", f"orders/{order_id}/notes", data={
-            "note": note,
-            "customer_note": customer_note
-        })
-        
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-            
-        return [TextContent(
-            type="text",
-            text=f"Successfully added note to order {order_id}."
-        )]
-
-    elif name == "create_order_refund":
-        order_id = arguments.get("order_id")
-        amount = arguments.get("amount")
-        reason = arguments.get("reason", "")
-        
-        if not order_id or amount is None:
-            return [TextContent(type="text", text="Error: order_id and amount are required")]
-            
-        result = wc_request("post", f"orders/{order_id}/refunds", data={
-            "amount": str(amount),
-            "reason": reason
-        })
-        
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-            
-        return [TextContent(
-            type="text",
-            text=f"Successfully created refund of {amount} for order {order_id}."
-        )]
-
-    
     elif name == "analyze_sales_trends":
         days = arguments.get("days", 30)
         
@@ -403,20 +361,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         
         return [TextContent(type="text", text=json.dumps(frequent_buyers.to_dict('records'), indent=2))]
 
-    elif name == "update_product_stock":
-        product_id = arguments.get("product_id")
-        stock_quantity = arguments.get("stock_quantity")
-        
-        if not product_id or stock_quantity is None:
-            return [TextContent(type="text", text="Error: product_id and stock_quantity are required")]
-            
-        result = wc_request("put", f"products/{product_id}", data={"stock_quantity": stock_quantity, "manage_stock": True})
-        
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-            
-        return [TextContent(type="text", text=f"Successfully updated product {product_id} stock to {stock_quantity}.")]
-
     elif name == "get_product_variations":
         product_id = arguments.get("product_id")
         
@@ -526,14 +470,14 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if not endpoint:
             return [TextContent(type="text", text=f"Error: Invalid pricing type: {pricing_type}")]
             
-        pricing = nova_request("get", endpoint)
+        pricing = nova_request("get", endpoint, auth_type="api_key")
         if "error" in pricing:
             return [TextContent(type="text", text=f"Error: {pricing['error']}")]
         return [TextContent(type="text", text=json.dumps(pricing, indent=2))]
 
     elif name == "get_order_lead_time":
         order_id = arguments.get("order_id")
-        lead_time = nova_request("get", f"fetch-order-lead-time/{order_id}")
+        lead_time = nova_request("get", f"fetch-order-lead-time/{order_id}", auth_type="api_key")
         if "error" in lead_time:
             return [TextContent(type="text", text=f"Error: {lead_time['error']}")]
         return [TextContent(type="text", text=json.dumps(lead_time, indent=2))]
@@ -547,27 +491,19 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
     elif name == "manage_mockups":
         order_id = arguments.get("order_id")
-        action = arguments.get("action") # fetch, approve, revise
-        notes = arguments.get("notes", "")
-
+        action = arguments.get("action") # fetch
+        # Restricted to fetch only
         if action == "fetch":
             mockups = nova_request("get", f"order/{order_id}/mockups", auth_type="api_key")
             if "error" in mockups:
                 return [TextContent(type="text", text=f"Error: {mockups['error']}")]
             return [TextContent(type="text", text=json.dumps(mockups, indent=2))]
-        
-        elif action in ["approve", "revise"]:
-            result = nova_request("post", f"order/{order_id}/mockup-feedback", data={"action": action, "notes": notes}, auth_type="api_key")
-            if "error" in result:
-                return [TextContent(type="text", text=f"Error: {result['error']}")]
-            return [TextContent(type="text", text=f"Successfully submitted {action} for order {order_id}.")]
-        
         else:
-             return [TextContent(type="text", text=f"Error: Invalid action '{action}'. details: action must be one of 'fetch', 'approve', 'revise'.")]
+             return [TextContent(type="text", text=f"Error: Action '{action}' is not supported or allowed.")]
 
     elif name == "get_product_knowledge":
         signage_id = arguments.get("signage_id")
-        knowledge = nova_request("get", f"signage/{signage_id}/knowledge")
+        knowledge = nova_request("get", f"signage/{signage_id}/knowledge", auth_type="api_key")
         if "error" in knowledge:
             return [TextContent(type="text", text=f"Error: {knowledge['error']}")]
         return [TextContent(type="text", text=json.dumps(knowledge, indent=2))]
@@ -577,9 +513,9 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         user_id = arguments.get("user_id")
         
         if email:
-            result = nova_request("get", f"businessId/{email}")
+            result = nova_request("get", f"businessId/{email}", auth_type="api_key")
         elif user_id:
-            result = nova_request("get", f"businessIdfromId/{user_id}")
+            result = nova_request("get", f"businessIdfromId/{user_id}", auth_type="api_key")
         else:
             return [TextContent(type="text", text="Error: Either email or user_id is required")]
             
@@ -600,44 +536,28 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if not params:
              return [TextContent(type="text", text="Error: One of id, email, or business_id is required")]
              
-        result = nova_request("get", "customer-profile", params=params)
+        result = nova_request("get", "customer-profile", params=params, auth_type="api_key")
         if "error" in result:
              return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
         
     elif name == "get_user_orders":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/orders")
+        result = nova_request("get", f"user/{user_id}/orders", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_user_order_total":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/order-total")
+        result = nova_request("get", f"user/{user_id}/order-total", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_user_average_order":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/average-order")
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
-    elif name == "get_ticket_details":
-        ticket_id = arguments.get("ticket_id")
-        email = arguments.get("email")
-        result = nova_request("get", f"ticket-details/{ticket_id}", params={"email": email} if email else None, auth_type="basic")
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
-    elif name == "get_user_details":
-        user_id = arguments.get("user_id")
-        email = arguments.get("email")
-        result = nova_request("get", f"user-details/{user_id}", params={"email": email} if email else None, auth_type="basic")
+        result = nova_request("get", f"user/{user_id}/average-order", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
@@ -649,15 +569,13 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-    # Edit tools (Implemented but not registered in list_tools to remain "uncallable" via discovery)
-    elif name == "link_zendesk_ticket":
-        order_id = arguments.get("order_id")
-        ticket_id = arguments.get("ticket_id")
-        result = nova_request("post", "update-order-mcp", data={"subject": str(order_id), "ticket_id": str(ticket_id)}, auth_type="basic")
+    elif name == "get_public_orders":
+        result = nova_request("get", "orders")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
-        return [TextContent(type="text", text=f"Successfully linked ticket {ticket_id} to order {order_id}.")]
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
+    # Edit tools (Implemented but not registered in list_tools to remain "uncallable" via discovery)
     elif name == "ocr_business_card":
         file_url = arguments.get("file_url")
         result = nova_request("post", "ocr/business-card", data={"file_url": file_url}, auth_type="api_key")
@@ -717,21 +635,135 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
     elif name == "get_user_quotes":
         user_id = arguments.get("user_id")
-        if not user_id:
-            return [TextContent(type="text", text="Error: user_id is required")]
+        email = arguments.get("email")
+        business_id = arguments.get("business_id")
+        
+        params = {}
+        if user_id: params["id"] = user_id
+        if email: params["email"] = email
+        if business_id: params["business_id"] = business_id
+        
+        if not params:
+            return [TextContent(type="text", text="Error: One of user_id, email, or business_id is required")]
             
-        quotes = nova_request("get", f"user/{user_id}/quotes")
+        quotes = nova_request("get", "user/quotes", params=params, auth_type="api_key")
         
         if "error" in quotes:
             return [TextContent(type="text", text=f"Error: {quotes['error']}")]
             
         return [TextContent(type="text", text=json.dumps(quotes, indent=2))]
 
+    elif name == "get_refund_analytics":
+        period = arguments.get("period", "last_month")
+        refund_type = arguments.get("type", "all")
+        start_date = arguments.get("start_date")
+        end_date = arguments.get("end_date")
+        
+        params = {"period": period, "type": refund_type}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+            
+        result = nova_request("get", "analytics/refunds", params=params, auth_type="api_key")
+        
+        if "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+            
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_inactive_clients":
+        days = arguments.get("days", 60)
+        activity_type = arguments.get("activity_type", "quotes")
+        per_page = arguments.get("per_page", 50)
+        page = arguments.get("page", 1)
+        
+        params = {
+            "days": days,
+            "activity_type": activity_type,
+            "per_page": per_page,
+            "page": page
+        }
+        
+        result = nova_request("get", "analytics/inactive-clients", params=params, auth_type="api_key")
+        
+        if "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+            
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "search_customers":
+        business_name = arguments.get("business_name")
+        business_type = arguments.get("business_type")
+        country = arguments.get("country")
+        state = arguments.get("state")
+        per_page = arguments.get("per_page", 50)
+        page = arguments.get("page", 1)
+        
+        params = {"per_page": per_page, "page": page}
+        if business_name:
+            params["business_name"] = business_name
+        if business_type:
+            params["business_type"] = business_type
+        if country:
+            params["country"] = country
+        if state:
+            params["state"] = state
+            
+        result = nova_request("get", "customers/search", params=params, auth_type="api_key")
+        
+        if "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+            
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_streak_box":
+        box_id = arguments.get("box_id")
+        if not box_id:
+            return [TextContent(type="text", text="Error: box_id is required")]
+            
+        result = nova_request("get", f"streakBox/{box_id}", auth_type="api_key")
+        
+        if "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+            
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "list_all_business_ids":
+        result = nova_request("get", "show-all-business-id/", auth_type="api_key")
+        
+        if "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+            
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
 
 # Register available tools
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List all available tools"""
+    tools = [
+        Tool(
+            name="get_products",
+            description="Get products from WooCommerce store. Returns product details including ID, name, SKU, price, stock quantity, and total sales.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "per_page": {"type": "number", "description": "Number of products to retrieve (max 100)", "default": 10},
+                    "category": {"type": "string", "description": "Filter by category ID"}
+                }
+            }
+        ),
+        # ... (other tools kept)
+    ]
+    
+    # Append Zendesk tools
+    tools.extend(get_zendesk_tool_definitions())
+    
+    # Re-constructing the full list for clarity in replacement (or just adding them)
+    # Actually, I'll just append them to the existing list construction logic.
+    # The current list_tools returns a literal list. I'll modify it to be more extensible.
+    
     return [
         Tool(
             name="get_products",
@@ -760,50 +792,12 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="update_order_status",
-            description="Update the status of an existing order.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "order_id": {"type": "number"},
-                    "status": {"type": "string", "enum": ["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"]}
-                },
-                "required": ["order_id", "status"]
-            }
-        ),
-        Tool(
             name="get_order_notes",
             description="Retrieve notes for a specific order.",
             inputSchema={
                 "type": "object",
                 "properties": {"order_id": {"type": "number"}},
                 "required": ["order_id"]
-            }
-        ),
-        Tool(
-            name="add_order_note",
-            description="Add a new note to an order.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "order_id": {"type": "number"},
-                    "note": {"type": "string"},
-                    "customer_note": {"type": "boolean", "default": False}
-                },
-                "required": ["order_id", "note"]
-            }
-        ),
-        Tool(
-            name="create_order_refund",
-            description="Create a refund for an order.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "order_id": {"type": "number"},
-                    "amount": {"type": "number"},
-                    "reason": {"type": "string"}
-                },
-                "required": ["order_id", "amount"]
             }
         ),
         Tool(
@@ -853,17 +847,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {"coupon_code": {"type": "string", "description": "Optional specific coupon code"}}
             }
         ),
-        Tool(
-            name="get_customer_profile",
-            description="Get detailed profile for a customer by ID or email.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "customer_id": {"type": "number"},
-                    "email": {"type": "string"}
-                }
-            }
-        ),
+
         Tool(
             name="get_product_reviews",
             description="Get product reviews.",
@@ -881,50 +865,12 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="update_product_stock",
-            description="Update stock quantity for a product.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "number"},
-                    "stock_quantity": {"type": "number"}
-                },
-                "required": ["product_id", "stock_quantity"]
-            }
-        ),
-        Tool(
             name="get_product_variations",
             description="Get variations for a variable product.",
             inputSchema={
                 "type": "object",
                 "properties": {"product_id": {"type": "number"}},
                 "required": ["product_id"]
-            }
-        ),
-        Tool(
-            name="toggle_product_visibility",
-            description="Set product status (publish, draft, etc.).",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "product_id": {"type": "number"},
-                    "status": {"type": "string", "enum": ["publish", "draft", "pending", "private"]}
-                },
-                "required": ["product_id", "status"]
-            }
-        ),
-        Tool(
-            name="create_coupon",
-            description="Create a new discount coupon.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "code": {"type": "string"},
-                    "amount": {"type": "number"},
-                    "discount_type": {"type": "string", "enum": ["percent", "fixed_cart", "fixed_product"], "default": "percent"},
-                    "description": {"type": "string"}
-                },
-                "required": ["code", "amount"]
             }
         ),
         Tool(
@@ -970,18 +916,6 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="link_zendesk_ticket",
-            description="Automate the connection between support tickets and physical orders.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "order_id": {"type": "number"},
-                    "ticket_id": {"type": "number"}
-                },
-                "required": ["order_id", "ticket_id"]
-            }
-        ),
-        Tool(
             name="check_lead_time",
             description="Get detailed production timeline and estimated lead times for an order.",
             inputSchema={
@@ -992,13 +926,12 @@ async def list_tools() -> list[Tool]:
         ),
          Tool(
             name="manage_mockups",
-            description="Allow AI to help customers review and approve their signage designs safely.",
+            description="Fetch mockup links for review.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "order_id": {"type": "number"},
-                    "action": {"type": "string", "enum": ["fetch", "approve", "revise"], "description": "Action to perform: fetch links, approve design, or request revision"},
-                    "notes": {"type": "string", "description": "Notes for approval or revision (required for approve/revise)"}
+                    "action": {"type": "string", "enum": ["fetch"], "description": "Action to perform: fetch links"}
                 },
                 "required": ["order_id", "action"]
             }
@@ -1013,16 +946,26 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
+            name="get_business_id",
+            description="Find business ID by customer email or user ID. format: [Country][State]-[Business Type Initial][Sequence Number] (e.g., USNY-S001). Provide either email or user_id.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "email": {"type": "string"},
+                    "user_id": {"type": "number"}
+                }
+            }
+        ),
+        Tool(
             name="get_customer_profile",
-             description="Get detailed profile for a customer by ID or email. Unified endpoint for all customer lookups.",
+             description="Get detailed profile for a customer by ID or email. Unified endpoint for all customer lookups. Provide at least one of id, email, or business_id.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "id": {"type": "number", "description": "Twilio/WordPress User ID"},
                     "email": {"type": "string"},
-                    "business_id": {"type": "string"}
-                },
-                 "description": "Provide at least one of id, email, or business_id"
+                    "business_id": {"type": "string", "description": "Business ID Format: [Country][State]-[Business Type Initial][Sequence Number] (e.g. USNY-S001)"}
+                }
             }
         ),
          Tool(
@@ -1049,13 +992,14 @@ async def list_tools() -> list[Tool]:
         ),
          Tool(
             name="get_user_quotes",
-            description="Retrieve all quotes associated with a specific user.",
+            description="Retrieve all quotes associated with a specific user by ID, email, or business ID.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "number"}
-                },
-                "required": ["user_id"]
+                    "user_id": {"type": "number", "description": "WordPress User ID"},
+                    "email": {"type": "string", "description": "User email address"},
+                    "business_id": {"type": "string", "description": "Business ID Format: [Country][State]-[Business Type Initial][Sequence Number]"}
+                }
             }
         ),
         Tool(
@@ -1070,36 +1014,28 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="get_ticket_details",
-            description="Get detailed information for a Zendesk ticket. Requires Application Password.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "ticket_id": {"type": "string"},
-                    "email": {"type": "string", "description": "Admin email for auth verification"}
-                },
-                "required": ["ticket_id"]
-            }
-        ),
-        Tool(
-            name="get_user_details",
-            description="Get detailed information for a Zendesk user. Requires Application Password.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "user_id": {"type": "string"},
-                    "email": {"type": "string", "description": "Admin email for auth verification"}
-                },
-                "required": ["user_id"]
-            }
-        ),
-        Tool(
             name="get_order_details",
             description="Get detailed information for a specific order.",
             inputSchema={
                 "type": "object",
                 "properties": {"order_id": {"type": "number"}},
                 "required": ["order_id"]
+            }
+        ),
+        Tool(
+            name="get_public_orders",
+            description="List live orders with production details. Public version of Nova orders.",
+            inputSchema={"type": "object", "properties": {}}
+        ),
+        Tool(
+            name="ocr_business_card",
+            description="Extract contact information from a business card image URL.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_url": {"type": "string", "description": "URL of the business card image"}
+                },
+                "required": ["file_url"]
             }
         ),
         Tool(
@@ -1123,8 +1059,65 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["quote_id"]
             }
+        ),
+        Tool(
+            name="get_refund_analytics",
+            description="Get refund analytics by time period and type (partial/full). Analyze refund patterns and track refund trends over time.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "period": {"type": "string", "enum": ["last_7_days", "last_30_days", "last_month", "custom"], "default": "last_month", "description": "Time period for analysis"},
+                    "type": {"type": "string", "enum": ["all", "partial", "full"], "default": "all", "description": "Filter by refund type"},
+                    "start_date": {"type": "string", "description": "ISO 8601 start date (required if period=custom)"},
+                    "end_date": {"type": "string", "description": "ISO 8601 end date (required if period=custom)"}
+                }
+            }
+        ),
+        Tool(
+            name="get_inactive_clients",
+            description="Find customers without recent quotes/orders, segmented by purchase history. Identify customers who haven't quoted or ordered in X days.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "days": {"type": "number", "default": 60, "description": "Days of inactivity to check"},
+                    "activity_type": {"type": "string", "enum": ["quotes", "orders", "both"], "default": "quotes", "description": "Type of activity to check"},
+                    "per_page": {"type": "number", "default": 50, "description": "Results per page"},
+                    "page": {"type": "number", "default": 1, "description": "Page number"}
+                }
+            }
+        ),
+        Tool(
+            name="search_customers",
+            description="Search and filter customers by business name, type, location, etc. Get full customer profiles with contact info, addresses, and stats.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "business_name": {"type": "string", "description": "Filter by business name (e.g., 'FASTSIGNS')"},
+                    "business_type": {"type": "string", "description": "Filter by business type initial (e.g., 'S' for signage)"},
+                    "country": {"type": "string", "description": "Filter by country code (e.g., 'US')"},
+                    "state": {"type": "string", "description": "Filter by state code (e.g., 'NY')"},
+                    "per_page": {"type": "number", "default": 50, "description": "Results per page"},
+                    "page": {"type": "number", "default": 1, "description": "Page number"}
+                }
+            }
+        ),
+        Tool(
+            name="get_streak_box",
+            description="Retrieve Streak CRM box details by ID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "box_id": {"type": "string", "description": "The unique ID of the Streak box"}
+                },
+                "required": ["box_id"]
+            }
+        ),
+        Tool(
+            name="list_all_business_ids",
+            description="List all partners with their Business IDs and associated emails.",
+            inputSchema={"type": "object", "properties": {}}
         )
-    ]
+    ] + get_zendesk_tool_definitions()
 
 
 # Main function to run the server
