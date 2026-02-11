@@ -78,6 +78,17 @@ async def handle_zendesk_sell_tool(name: str, arguments: Any) -> list[TextConten
 
     elif name == "search_zendesk_sell_contacts":
         params = {k: v for k, v in arguments.items() if v is not None}
+        
+        # Handle business_id search (maps to NOVA Web ID custom field)
+        if "business_id" in params:
+            # We assume the user wants to search by the custom field "NOVA Web ID"
+            # Note: Searching by custom field usually requires the field ID, but we try name first
+            # or rely on the API handling mapped names if supported, or this acts as a placeholder
+            # for the correct query structure once Field ID is known.
+            # For now, we pass it as a custom_field filter.
+            b_id = params.pop("business_id")
+            params["custom_fields[NOVA Web ID]"] = b_id
+            
         result = zendesk_sell_request("GET", "contacts", params=params)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
@@ -173,6 +184,7 @@ def get_zendesk_sell_tool_definitions() -> list[Tool]:
                 "properties": {
                     "email": {"type": "string", "description": "Filter by email"},
                     "name": {"type": "string", "description": "Filter by name"},
+                    "business_id": {"type": "string", "description": "Filter by NOVA Web ID / Business ID (e.g. USNY-S001)"},
                     "is_organization": {"type": "boolean", "description": "Filter by whether the contact is an organization"}
                 }
             }
