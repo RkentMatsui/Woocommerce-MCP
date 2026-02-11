@@ -15,8 +15,9 @@ An MCP (Model Context Protocol) server for WooCommerce, providing tools for prod
 ### Support & CRM Integration
 - **Zendesk Tickets**: Search for support tickets, get details, and retrieve comment history.
 - **Support Responses**: Add public replies or internal notes directly to tickets.
+- **Zendesk Sell (CRM)**: Search for leads, contacts, and deals. Retrieve specific custom fields like 'Industry', 'Sample Box', 'Product', and 'Service'.
 - **User Management**: Search and identify customers within the Zendesk system.
-- **Streak CRM**: Retrieve box details for deal tracking.
+- **Streak CRM**: Retrieve box details for deal tracking (Legacy support).
 
 ### Nova B2B Integration Tools
 - **Live Order Feed**: Track physical material details and production queue.
@@ -24,8 +25,10 @@ An MCP (Model Context Protocol) server for WooCommerce, providing tools for prod
 - **Production Timeline**: Detailed milestones and estimated lead times.
 - **Design Approvals**: Access shared links to mockups and submit approval status.
 - **Product Knowledge**: Access technical specs, installation guides, and FAQs.
+- **Quotes & Estimating**: Retrieve and search signage quotes by user or business ID.
 - **Customer Lookup**: Find business information by email or user ID.
 - **OCR Integration**: Extract contact details from business card images.
+- **Analytics**: Analyze refund patterns and identify inactive clients.
 
 ## Prerequisites
 
@@ -71,6 +74,7 @@ WP_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 # Zendesk Integration (Direct)
 ZENDESK_EMAIL=your_email@example.com
 ZENDESK_API_TOKEN=your_zendesk_api_token
+ZENDESK_SELL_API_TOKEN=your_zendesk_sell_token
 ```
 
 ### 4. Test Connection

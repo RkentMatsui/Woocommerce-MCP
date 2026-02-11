@@ -13,6 +13,7 @@ from woocommerce import API
 from dotenv import load_dotenv
 import pandas as pd
 from zendesk_tools import handle_zendesk_tool, get_zendesk_tool_definitions
+from zendesk_sell_tools import handle_zendesk_sell_tool, get_zendesk_sell_tool_definitions
 
 # Manual .env parsing
 def load_env_manually(path):
@@ -142,6 +143,8 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
     
     # Handle Zendesk tools
     if name.startswith("search_zendesk") or name.startswith("get_zendesk") or name == "add_zendesk_ticket_comment":
+        if "_sell_" in name:
+            return await handle_zendesk_sell_tool(name, arguments)
         return await handle_zendesk_tool(name, arguments)
 
     if name == "get_products":
@@ -717,18 +720,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-    elif name == "get_streak_box":
-        box_id = arguments.get("box_id")
-        if not box_id:
-            return [TextContent(type="text", text="Error: box_id is required")]
-            
-        result = nova_request("get", f"streakBox/{box_id}", auth_type="api_key")
-        
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-            
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
     elif name == "list_all_business_ids":
         result = nova_request("get", "show-all-business-id/", auth_type="api_key")
         
@@ -1102,22 +1093,11 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="get_streak_box",
-            description="Retrieve Streak CRM box details by ID.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "box_id": {"type": "string", "description": "The unique ID of the Streak box"}
-                },
-                "required": ["box_id"]
-            }
-        ),
-        Tool(
             name="list_all_business_ids",
             description="List all partners with their Business IDs and associated emails.",
             inputSchema={"type": "object", "properties": {}}
         )
-    ] + get_zendesk_tool_definitions()
+    ] + get_zendesk_tool_definitions() + get_zendesk_sell_tool_definitions()
 
 
 # Main function to run the server

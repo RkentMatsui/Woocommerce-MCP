@@ -139,6 +139,34 @@ def test_zendesk():
     except Exception as e:
         print(f"ERROR: Zendesk: Error: {str(e)}")
 
+def test_zendesk_sell():
+    print("\nTesting Zendesk Sell connection...")
+    token = os.getenv("ZENDESK_SELL_API_TOKEN")
+    
+    if not token:
+        print("! Zendesk Sell: Skipping test (ZENDESK_SELL_API_TOKEN not set).")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
+    }
+    
+    try:
+        # Test by fetching the current user (sync account)
+        resp = requests.get("https://api.getbase.com/v2/accounts/self", headers=headers)
+        if resp.status_code == 200:
+            account = resp.json().get("data", {})
+            print(f"OK: Zendesk Sell: Connection successful! Account: {account.get('name')}")
+        else:
+            print(f"FAIL: Zendesk Sell: Authentication failed (Status: {resp.status_code})")
+            try:
+                print(f"Details: {resp.json().get('errors')}")
+            except:
+                print(f"Response: {resp.text}")
+    except Exception as e:
+        print(f"ERROR: Zendesk Sell: Error: {str(e)}")
+
 def test_zendesk_tools():
     print("\nTesting Zendesk MCP Tools functionality...")
     from zendesk_tools import handle_zendesk_tool
@@ -183,4 +211,5 @@ if __name__ == "__main__":
     test_nova_api_discovery()
     test_nova_api()
     test_zendesk()
+    test_zendesk_sell()
     test_zendesk_tools()
