@@ -89,13 +89,30 @@ python test_connection.py
 
 ### Running the Server
 
-To run the MCP server using stdio:
+**Option 1: Stdio (Local Use with Claude Desktop)**
 
 ```powershell
 python server.py
 ```
 
-### Connecting to Claude Desktop
+**Option 2: HTTP/SSE Server (Remote/Online Use)**
+
+Run the FastAPI server which exposes the MCP server via SSE at `http://localhost:8000/sse`:
+
+```powershell
+python main.py
+```
+
+**Option 3: Docker (Production)**
+
+Build and run the container:
+
+```powershell
+docker build -t nova-mcp-server .
+docker run -p 8000:8000 --env-file .env nova-mcp-server
+```
+
+### Connecting to Claude Desktop (Stdio)
 
 Add the following to your Claude Desktop configuration (usually `%APPDATA%\Claude\claude_desktop_config.json`):
 

@@ -15,21 +15,8 @@ import pandas as pd
 from zendesk_tools import handle_zendesk_tool, get_zendesk_tool_definitions
 from zendesk_sell_tools import handle_zendesk_sell_tool, get_zendesk_sell_tool_definitions
 
-# Manual .env parsing
-def load_env_manually(path):
-    if not os.path.exists(path):
-        return
-    with open(path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '=' in line:
-                key, value = line.split('=', 1)
-                os.environ[key.strip()] = value.strip()
-
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_env_manually(env_path)
+# Load environment variables
+load_dotenv()
 
 # Initialize WooCommerce API client
 wcapi = API(

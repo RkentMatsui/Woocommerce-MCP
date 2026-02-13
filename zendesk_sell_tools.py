@@ -4,21 +4,10 @@ import json
 from typing import Any
 from mcp.types import Tool, TextContent
 
-# Manual .env parsing to ensure we get the right values
-def load_env_manually(path):
-    if not os.path.exists(path):
-        return
-    with open(path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '=' in line:
-                key, value = line.split('=', 1)
-                os.environ[key.strip()] = value.strip()
+from dotenv import load_dotenv
 
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_env_manually(env_path)
+# Load environment variables
+load_dotenv()
 
 ZENDESK_SELL_API_TOKEN = os.getenv("ZENDESK_SELL_API_TOKEN")
 BASE_URL = "https://api.getbase.com/v2"

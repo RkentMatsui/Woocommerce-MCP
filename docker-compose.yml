@@ -1,0 +1,12 @@
+services:
+  mcp-server:
+    build: .
+    container_name: nova_mcp_server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: python main.py
+    restart: unless-stopped
