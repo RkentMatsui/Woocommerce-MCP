@@ -440,7 +440,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(active, indent=2))]
 
     elif name == "get_all_orders":
-        orders = nova_request("get", "nova_orders", auth_type="api_key")
+        orders = nova_request("get", "mcp/nova_orders", auth_type="api_key")
         if "error" in orders:
             return [TextContent(type="text", text=f"Error: {orders['error']}")]
         return [TextContent(type="text", text=json.dumps(orders, indent=2))]
@@ -450,10 +450,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         pricing_type = arguments.get("type", "letters") # letters, multi-letters, logos, quantity-discount
         
         endpoint_map = {
-            "letters": f"pricingletters/{product_id}",
-            "multi-letters": f"multipricingletters/{product_id}",
-            "logos": f"pricinglogos/{product_id}",
-            "quantity-discount": f"quantity-discount/{product_id}"
+            "letters": f"mcp/pricingletters/{product_id}",
+            "multi-letters": f"mcp/multipricingletters/{product_id}",
+            "logos": f"mcp/pricinglogos/{product_id}",
+            "quantity-discount": f"mcp/quantity-discount/{product_id}"
         }
         
         endpoint = endpoint_map.get(pricing_type)
@@ -467,14 +467,14 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
     elif name == "get_order_lead_time":
         order_id = arguments.get("order_id")
-        lead_time = nova_request("get", f"fetch-order-lead-time/{order_id}", auth_type="api_key")
+        lead_time = nova_request("get", f"mcp/fetch-order-lead-time/{order_id}", auth_type="api_key")
         if "error" in lead_time:
             return [TextContent(type="text", text=f"Error: {lead_time['error']}")]
         return [TextContent(type="text", text=json.dumps(lead_time, indent=2))]
 
     elif name == "check_lead_time":
         order_id = arguments.get("order_id")
-        status = nova_request("get", f"order/{order_id}/production-status", auth_type="api_key")
+        status = nova_request("get", f"mcp/order/{order_id}/production-status", auth_type="api_key")
         if "error" in status:
             return [TextContent(type="text", text=f"Error: {status['error']}")]
         return [TextContent(type="text", text=json.dumps(status, indent=2))]
@@ -484,7 +484,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         action = arguments.get("action") # fetch
         # Restricted to fetch only
         if action == "fetch":
-            mockups = nova_request("get", f"order/{order_id}/mockups", auth_type="api_key")
+            mockups = nova_request("get", f"mcp/order/{order_id}/mockups", auth_type="api_key")
             if "error" in mockups:
                 return [TextContent(type="text", text=f"Error: {mockups['error']}")]
             return [TextContent(type="text", text=json.dumps(mockups, indent=2))]
@@ -493,7 +493,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
     elif name == "get_product_knowledge":
         signage_id = arguments.get("signage_id")
-        knowledge = nova_request("get", f"signage/{signage_id}/knowledge", auth_type="api_key")
+        knowledge = nova_request("get", f"mcp/signage/{signage_id}/knowledge", auth_type="api_key")
         if "error" in knowledge:
             return [TextContent(type="text", text=f"Error: {knowledge['error']}")]
         return [TextContent(type="text", text=json.dumps(knowledge, indent=2))]
@@ -503,9 +503,9 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         user_id = arguments.get("user_id")
         
         if email:
-            result = nova_request("get", f"businessId/{email}", auth_type="api_key")
+            result = nova_request("get", f"mcp/businessId/{email}", auth_type="api_key")
         elif user_id:
-            result = nova_request("get", f"businessIdfromId/{user_id}", auth_type="api_key")
+            result = nova_request("get", f"mcp/businessIdfromId/{user_id}", auth_type="api_key")
         else:
             return [TextContent(type="text", text="Error: Either email or user_id is required")]
             
@@ -526,41 +526,41 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if not params:
              return [TextContent(type="text", text="Error: One of id, email, or business_id is required")]
              
-        result = nova_request("get", "customer-profile", params=params, auth_type="api_key")
+        result = nova_request("get", "mcp/customer-profile", params=params, auth_type="api_key")
         if "error" in result:
              return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
         
     elif name == "get_user_orders":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/orders", auth_type="api_key")
+        result = nova_request("get", f"mcp/user/{user_id}/orders", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_user_order_total":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/order-total", auth_type="api_key")
+        result = nova_request("get", f"mcp/user/{user_id}/order-total", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_user_average_order":
         user_id = arguments.get("user_id")
-        result = nova_request("get", f"user/{user_id}/average-order", auth_type="api_key")
+        result = nova_request("get", f"mcp/user/{user_id}/average-order", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_order_details":
         order_id = arguments.get("order_id")
-        result = nova_request("get", f"order/{order_id}", auth_type="api_key")
+        result = nova_request("get", f"mcp/order/{order_id}", auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_public_orders":
-        result = nova_request("get", "orders")
+        result = nova_request("get", "mcp/orders")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
@@ -568,7 +568,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
     # Edit tools (Implemented but not registered in list_tools to remain "uncallable" via discovery)
     elif name == "ocr_business_card":
         file_url = arguments.get("file_url")
-        result = nova_request("post", "ocr/business-card", data={"file_url": file_url}, auth_type="api_key")
+        result = nova_request("post", "mcp/ocr/business-card", data={"file_url": file_url}, auth_type="api_key")
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
@@ -636,7 +636,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if not params:
             return [TextContent(type="text", text="Error: One of user_id, email, or business_id is required")]
             
-        quotes = nova_request("get", "user/quotes", params=params, auth_type="api_key")
+        quotes = nova_request("get", "mcp/user/quotes", params=params, auth_type="api_key")
         
         if "error" in quotes:
             return [TextContent(type="text", text=f"Error: {quotes['error']}")]
@@ -655,7 +655,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if end_date:
             params["end_date"] = end_date
             
-        result = nova_request("get", "analytics/refunds", params=params, auth_type="api_key")
+        result = nova_request("get", "mcp/analytics/refunds", params=params, auth_type="api_key")
         
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
@@ -675,7 +675,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             "page": page
         }
         
-        result = nova_request("get", "analytics/inactive-clients", params=params, auth_type="api_key")
+        result = nova_request("get", "mcp/analytics/inactive-clients", params=params, auth_type="api_key")
         
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
@@ -700,7 +700,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         if state:
             params["state"] = state
             
-        result = nova_request("get", "customers/search", params=params, auth_type="api_key")
+        result = nova_request("get", "mcp/customers/search", params=params, auth_type="api_key")
         
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
@@ -708,11 +708,100 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "list_all_business_ids":
-        result = nova_request("get", "show-all-business-id/", auth_type="api_key")
+        result = nova_request("get", "mcp/show-all-business-id/", auth_type="api_key")
         
         if "error" in result:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
             
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_top_selling_products":
+        limit = arguments.get("limit", 10)
+        period = arguments.get("period", "month")
+        result = wc_get("reports/top_sellers", {"period": period, "per_page": limit})
+        if isinstance(result, dict) and "error" in result:
+            return [TextContent(type="text", text=f"Error: {result['error']}")]
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_revenue_by_category":
+        categories = wc_get("products/categories", {"per_page": 100})
+        if isinstance(categories, dict) and "error" in categories:
+            return [TextContent(type="text", text=f"Error: {categories['error']}")]
+        result = []
+        for cat in categories:
+            cat_id = cat.get("id")
+            cat_name = cat.get("name")
+            products = wc_get("products", {"category": cat_id, "per_page": 100})
+            if isinstance(products, list):
+                total_sales = sum(float(p.get("total_sales", 0)) * float(p.get("price", 0) or 0) for p in products)
+                result.append({"category": cat_name, "product_count": len(products), "estimated_revenue": round(total_sales, 2)})
+        result.sort(key=lambda x: x["estimated_revenue"], reverse=True)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "analyze_customer_lvt":
+        customer_id = arguments.get("customer_id")
+        if not customer_id:
+            return [TextContent(type="text", text="Error: customer_id is required")]
+        orders = wc_get("orders", {"customer": customer_id, "per_page": 100, "status": "completed"})
+        if isinstance(orders, dict) and "error" in orders:
+            return [TextContent(type="text", text=f"Error: {orders['error']}")]
+        total_spent = sum(float(o.get("total", 0)) for o in orders)
+        result = {
+            "customer_id": customer_id,
+            "total_orders": len(orders),
+            "total_spent": round(total_spent, 2),
+            "average_order_value": round(total_spent / len(orders), 2) if orders else 0,
+            "first_order": orders[-1].get("date_created") if orders else None,
+            "last_order": orders[0].get("date_created") if orders else None,
+        }
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "compare_sales_periods":
+        p1_after = arguments.get("period1_after")
+        p1_before = arguments.get("period1_before")
+        p2_after = arguments.get("period2_after")
+        p2_before = arguments.get("period2_before")
+        if not all([p1_after, p1_before, p2_after, p2_before]):
+            return [TextContent(type="text", text="Error: All four date parameters are required")]
+        p1_orders = wc_get("orders", {"after": p1_after, "before": p1_before, "status": "completed", "per_page": 100})
+        p2_orders = wc_get("orders", {"after": p2_after, "before": p2_before, "status": "completed", "per_page": 100})
+        def summarize(orders):
+            if isinstance(orders, dict) and "error" in orders:
+                return {"error": orders["error"]}
+            revenue = sum(float(o.get("total", 0)) for o in orders)
+            return {"order_count": len(orders), "revenue": round(revenue, 2), "avg_order_value": round(revenue / len(orders), 2) if orders else 0}
+        result = {"period1": {"from": p1_after, "to": p1_before, **summarize(p1_orders)},
+                  "period2": {"from": p2_after, "to": p2_before, **summarize(p2_orders)}}
+        if "error" not in result["period1"] and "error" not in result["period2"]:
+            rev_change = result["period2"]["revenue"] - result["period1"]["revenue"]
+            result["comparison"] = {"revenue_change": round(rev_change, 2),
+                                     "revenue_change_pct": round((rev_change / result["period1"]["revenue"]) * 100, 1) if result["period1"]["revenue"] else None}
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_coupon_performance":
+        coupon_code = arguments.get("coupon_code")
+        params = {"per_page": 100}
+        if coupon_code:
+            params["code"] = coupon_code
+        coupons = wc_get("coupons", params)
+        if isinstance(coupons, dict) and "error" in coupons:
+            return [TextContent(type="text", text=f"Error: {coupons['error']}")]
+        result = [{"id": c.get("id"), "code": c.get("code"), "discount_type": c.get("discount_type"),
+                   "amount": c.get("amount"), "usage_count": c.get("usage_count"),
+                   "usage_limit": c.get("usage_limit"), "date_expires": c.get("date_expires")} for c in coupons]
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    elif name == "get_product_reviews":
+        product_id = arguments.get("product_id")
+        params = {"per_page": 50}
+        if product_id:
+            params["product"] = product_id
+        reviews = wc_get("products/reviews", params)
+        if isinstance(reviews, dict) and "error" in reviews:
+            return [TextContent(type="text", text=f"Error: {reviews['error']}")]
+        result = [{"id": r.get("id"), "product_id": r.get("product_id"), "reviewer": r.get("reviewer"),
+                   "rating": r.get("rating"), "review": r.get("review", {}).get("rendered", ""),
+                   "date_created": r.get("date_created"), "verified": r.get("verified")} for r in reviews]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
@@ -720,28 +809,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List all available tools"""
-    tools = [
-        Tool(
-            name="get_products",
-            description="Get products from WooCommerce store. Returns product details including ID, name, SKU, price, stock quantity, and total sales.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "per_page": {"type": "number", "description": "Number of products to retrieve (max 100)", "default": 10},
-                    "category": {"type": "string", "description": "Filter by category ID"}
-                }
-            }
-        ),
-        # ... (other tools kept)
-    ]
-    
-    # Append Zendesk tools
-    tools.extend(get_zendesk_tool_definitions())
-    
-    # Re-constructing the full list for clarity in replacement (or just adding them)
-    # Actually, I'll just append them to the existing list construction logic.
-    # The current list_tools returns a literal list. I'll modify it to be more extensible.
-    
     return [
         Tool(
             name="get_products",
@@ -891,6 +958,15 @@ async def list_tools() -> list[Tool]:
                     "type": {"type": "string", "enum": ["letters", "multi-letters", "logos", "quantity-discount"], "default": "letters"}
                 },
                 "required": ["product_id"]
+            }
+        ),
+        Tool(
+            name="get_order_lead_time",
+            description="Get the lead time status for an order from the Nova orders export.",
+            inputSchema={
+                "type": "object",
+                "properties": {"order_id": {"type": "number"}},
+                "required": ["order_id"]
             }
         ),
         Tool(
