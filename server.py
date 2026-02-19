@@ -565,13 +565,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             return [TextContent(type="text", text=f"Error: {result['error']}")]
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-    # Edit tools (Implemented but not registered in list_tools to remain "uncallable" via discovery)
-    elif name == "ocr_business_card":
-        file_url = arguments.get("file_url")
-        result = nova_request("post", "mcp/ocr/business-card", data={"file_url": file_url}, auth_type="api_key")
-        if "error" in result:
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     elif name == "get_quotes":
         per_page = arguments.get("per_page", 10)
@@ -1080,17 +1073,6 @@ async def list_tools() -> list[Tool]:
             name="get_public_orders",
             description="List live orders with production details. Public version of Nova orders.",
             inputSchema={"type": "object", "properties": {}}
-        ),
-        Tool(
-            name="ocr_business_card",
-            description="Extract contact information from a business card image URL.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "file_url": {"type": "string", "description": "URL of the business card image"}
-                },
-                "required": ["file_url"]
-            }
         ),
         Tool(
             name="get_quotes",
