@@ -6,7 +6,8 @@ import time
 load_dotenv()
 
 BASE_URL = "http://localhost:8000"
-API_KEY = "test-secret-key"
+# Use the same key set in .env for testing, or a default for the script internal tests
+API_KEY = os.getenv("MCP_SSE_API_KEY", "test-secret-key")
 
 def test_auth():
     print("Setting temporary environment variable for test...")
@@ -50,6 +51,16 @@ def test_auth():
             print(f"FAIL: Expected 200, got {resp.status_code}")
     except requests.exceptions.Timeout:
         print("OK: Accepted with correct key (timeout reached while waiting for stream).")
+    print(f"\nTesting SSE endpoint with CORRECT key (via query parameter)...")
+    try:
+        resp = requests.get(f"{BASE_URL}/sse?api_key={API_KEY}", stream=True, timeout=2)
+        print(f"Status: {resp.status_code}")
+        if resp.status_code == 200:
+            print("OK: Accepted with correct key.")
+        else:
+            print(f"FAIL: Expected 200, got {resp.status_code}")
+    except requests.exceptions.Timeout:
+        print("OK: Accepted with correct key (timeout reached).")
     except Exception as e:
         print(f"Error: {e}")
 

@@ -71,6 +71,9 @@ NOVA_API_KEY=your_custom_api_key
 WP_USERNAME=admin_username
 WP_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 
+# MCP Server Security (For SSE Mode)
+MCP_SSE_API_KEY=your_secret_security_key
+
 # Zendesk Integration (Direct)
 ZENDESK_EMAIL=your_email@example.com
 ZENDESK_API_TOKEN=your_zendesk_api_token
@@ -95,13 +98,13 @@ python test_connection.py
 python server.py
 ```
 
-**Option 2: HTTP/SSE Server (Remote/Online Use)**
-
-Run the FastAPI server which exposes the MCP server via SSE at `http://localhost:8000/sse`:
+Run the FastAPI server which exposes the MCP server via SSE. Secure access requires an API key provided via the `X-API-Key` header or `Authorization: Bearer <key>`.
 
 ```powershell
 python main.py
 ```
+
+The server will be available at `http://localhost:8000/sse`.
 
 **Option 3: Docker (Production)**
 
@@ -112,28 +115,43 @@ docker build -t nova-mcp-server .
 docker run -p 8000:8000 --env-file .env nova-mcp-server
 ```
 
-### Connecting to Claude Desktop (Stdio)
+### Connecting to Claude Desktop
 
-Add the following to your Claude Desktop configuration (usually `%APPDATA%\Claude\claude_desktop_config.json`):
+#### Option 1: Local (Stdio)
+Add the following to your Claude Desktop configuration (usually `%APPDATA%\\Claude\\claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "woocommerce": {
+    "woocommerce-local": {
       "command": "python.exe",
-      "args": [
-        "f:\\Work\\Nova\\wc-mcp-server\\server.py"
-      ],
+      "args": ["f:\\\\Work\\\\Local\\\\nova\\\\app\\\\public\\\\wp-content\\\\themes\\\\nova-b2b\\\\wc-mcp-server\\\\server.py"],
       "env": {
         "WC_URL": "your_url",
         "WC_CONSUMER_KEY": "your_key",
         "WC_CONSUMER_SECRET": "your_secret",
-        "NOVA_API_KEY": "your_api_key",
-        "WP_USERNAME": "your_username",
-        "WP_APP_PASSWORD": "your_app_password",
-        "ZENDESK_EMAIL": "your_email",
-        "ZENDESK_API_TOKEN": "your_token"
+        "MCP_SSE_API_KEY": "your_security_key"
       }
+    }
+  }
+}
+```
+
+#### Option 2: Remote (SSE via Bridge)
+For remote servers (e.g., on Render), it is recommended to use the `mcp-remote` bridge for better stability in Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "woocommerce-remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://your-app.onrender.com/sse",
+        "--header",
+        "X-API-Key: your_secret_security_key"
+      ]
     }
   }
 }
